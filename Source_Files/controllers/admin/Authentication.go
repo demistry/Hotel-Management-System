@@ -25,7 +25,7 @@ func InitializeMongoDb(){
 
 func CreateNewHotelAdmin(response http.ResponseWriter, request *http.Request){
 	response.Header().Set("content-type", "application/json")
-	var adminUser models.AdminUser
+	var adminUser *models.AdminUser
 	err := json.NewDecoder(request.Body).Decode(&adminUser)
 	if err != nil{
 		response.WriteHeader(http.StatusForbidden)
@@ -37,11 +37,24 @@ func CreateNewHotelAdmin(response http.ResponseWriter, request *http.Request){
 	collection := mongoClient.Database(utils.DatabaseName).Collection(utils.HotelCollection)
 	mongoContext,cancel := context.WithTimeout(context.Background(), 8 * time.Second)
 	defer cancel()
-	insertedAdmin,er := collection.InsertOne(mongoContext, adminUser)
+	adminUser.HotelPassword = utils.GetHashedPassword(adminUser.HotelPassword)
+	findErr := collection.FindOne(mongoContext,models.AdminUser{HotelEmail:adminUser.HotelEmail}).Decode(&adminUser)
+	if findErr != nil{
+		response.WriteHeader(http.StatusOK)
+		errResponse := responses.GenericResponse{Status:false, Message:"Email:" + adminUser.HotelEmail + " already in use."}
+		json.NewEncoder(response).Encode(errResponse)
+		return
+	}
+	insertedAdmin,er := collection.InsertOne(mongoContext, &adminUser)
 	if er != nil{
 		response.WriteHeader(http.StatusInternalServerError)
-		errResponse := responses.GenericResponse{Status:false, Message:"Internal Server Error, " + er.Error()}
+		errResponse := responses.GenericResponse{Status:false, Message:"Internal Server Error"}
 		json.NewEncoder(response).Encode(errResponse)
+		return
 	}
 	json.NewEncoder(response).Encode(insertedAdmin)
 }
+
+
+
+
