@@ -6,10 +6,12 @@ import (
 	"github.com/Demistry/Hotel-Management-System/Source_Files/models"
 	"github.com/Demistry/Hotel-Management-System/Source_Files/responses"
 	"github.com/Demistry/Hotel-Management-System/Source_Files/utils"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"log"
 	"net/http"
+	"regexp"
 	"time"
 )
 
@@ -37,11 +39,19 @@ func CreateNewHotelAdmin(response http.ResponseWriter, request *http.Request){
 	collection := mongoClient.Database(utils.DatabaseName).Collection(utils.HotelCollection)
 	mongoContext,cancel := context.WithTimeout(context.Background(), 8 * time.Second)
 	defer cancel()
-	adminUser.HotelPassword = utils.GetHashedPassword(adminUser.HotelPassword)
-	findErr := collection.FindOne(mongoContext,models.AdminUser{HotelEmail:adminUser.HotelEmail}).Decode(&adminUser)
-	if findErr != nil{
+	if isEmailValid,_ := regexp.MatchString("(\\w+)@(\\w+)\\.com", adminUser.HotelEmail);!isEmailValid{
 		response.WriteHeader(http.StatusOK)
-		errResponse := responses.GenericResponse{Status:false, Message:"Email:" + adminUser.HotelEmail + " already in use."}
+		errResponse := responses.GenericResponse{Status: false, Message: "Email:" + adminUser.HotelEmail + " is not a valid email.."}
+		json.NewEncoder(response).Encode(errResponse)
+		return
+	}
+	adminUser.HotelPassword = utils.GetHashedPassword(adminUser.HotelPassword)
+	filter := bson.M{"hotelEmail": adminUser.HotelEmail}
+	findError := collection.FindOne(mongoContext, filter).Decode(&adminUser)
+
+	if findError == nil { //check if database already contains email
+		response.WriteHeader(http.StatusOK)
+		errResponse := responses.GenericResponse{Status: false, Message: "Email:" + adminUser.HotelEmail + " already in use."}
 		json.NewEncoder(response).Encode(errResponse)
 		return
 	}
