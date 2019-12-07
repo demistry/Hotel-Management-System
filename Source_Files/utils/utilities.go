@@ -8,6 +8,7 @@ import (
 //Collection parameters
 const DatabaseName = "HotelManagementSystemDatabase"
 const HotelCollection = "hotels"
+const EnvironmentVariableFilename = "EnvironmentVariables.env"
 
 const (
 	MinHashCost = 4

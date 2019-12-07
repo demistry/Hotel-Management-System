@@ -3,14 +3,18 @@ package admin
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/Demistry/Hotel-Management-System/Source_Files/models"
 	"github.com/Demistry/Hotel-Management-System/Source_Files/responses"
 	"github.com/Demistry/Hotel-Management-System/Source_Files/utils"
+	"github.com/sendgrid/sendgrid-go"
+	"github.com/sendgrid/sendgrid-go/helpers/mail"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"log"
 	"net/http"
+	"os"
 	"regexp"
 	"time"
 )
@@ -63,6 +67,27 @@ func CreateNewHotelAdmin(response http.ResponseWriter, request *http.Request){
 		return
 	}
 	json.NewEncoder(response).Encode(insertedAdmin)
+}
+
+
+func SendMail(emailAddress string, userId string){
+	from := mail.NewEmail("HotSys", "Hotsys@mail.com")
+	subject := "Email Verification for HotSys"
+	to := mail.NewEmail("Example User", emailAddress)
+	content := mail.NewContent("text/plain", "Click on the link to verify your email address\n ")
+	m := mail.NewV3MailInit(from, subject, to, content)
+	fmt.Println("API KEY from environment is ", os.Getenv("SENDGRID_API_KEY"))
+	request := sendgrid.GetRequest(os.Getenv("SENDGRID_API_KEY"), "/v3/mail/send", "https://api.sendgrid.com")
+	request.Method = "POST"
+	request.Body = mail.GetRequestBody(m)
+	response, err := sendgrid.API(request)
+	if err != nil {
+		log.Println(err)
+	} else {
+		fmt.Println(response.StatusCode)
+		fmt.Println(response.Body)
+		//fmt.Println(response.Headers)
+	}
 }
 
 
