@@ -43,4 +43,5 @@ type AdminUser struct{
 	HotelPassword string `json:"hotelPassword" bson:"hotelPassword"`
 	IsUserVerified bool `json:"isUserVerified,omitempty" bson:"isUserVerified"`
 	CreatedAt time.Time `json:"createdAt,omitempty" bson:"createdAt"`
+	LinkExpiresAt time.Time `bson:"linkExpiresAt"`
 }

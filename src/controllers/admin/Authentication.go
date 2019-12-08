@@ -65,6 +65,7 @@ func CreateNewHotelAdmin(response http.ResponseWriter, request *http.Request){
 	}
 	adminUser.IsUserVerified = false
 	adminUser.CreatedAt = time.Now()
+	adminUser.LinkExpiresAt = time.Now().Add(30 * time.Second)
 	insertedID,er := collection.InsertOne(mongoContext, &adminUser)
 	if er != nil{
 		response.WriteHeader(http.StatusInternalServerError)
@@ -77,6 +78,7 @@ func CreateNewHotelAdmin(response http.ResponseWriter, request *http.Request){
 }
 
 func VerifyAdminEmail(response http.ResponseWriter, request *http.Request){
+	response.Header().Set("content-type", "application/json")
 	idParameter := mux.Vars(request)
 	id,_ := primitive.ObjectIDFromHex(idParameter["id"])
 	var admin models.AdminUser
@@ -91,20 +93,22 @@ func VerifyAdminEmail(response http.ResponseWriter, request *http.Request){
 		json.NewEncoder(response).Encode(errResponse)
 		return
 	}
-	if admin.CreatedAt.Before(time.Now()) && !admin.IsUserVerified{
-		_, _ = collection.UpdateOne(mongoContext, filter, updateFilter)
+	if admin.LinkExpiresAt.After(time.Now()){
+		if !admin.IsUserVerified{
+			_, _ = collection.UpdateOne(mongoContext, filter, updateFilter)
+			response.WriteHeader(http.StatusOK)
+			errResponse := responses.GenericResponse{Status:true, Message:"User email successfully verified"}
+			json.NewEncoder(response).Encode(errResponse)
+			return
+		} else{
+			response.WriteHeader(http.StatusOK)
+			errResponse := responses.GenericResponse{Status:false, Message:"User is already verified"}
+			json.NewEncoder(response).Encode(errResponse)
+			return
+		}
+	}else{
 		response.WriteHeader(http.StatusOK)
-		errResponse := responses.GenericResponse{Status:true, Message:"User mail successfully verified"}
-		json.NewEncoder(response).Encode(errResponse)
-		return
-	} else if admin.IsUserVerified{
-		response.WriteHeader(http.StatusOK)
-		errResponse := responses.GenericResponse{Status:false, Message:"Already verified user"}
-		json.NewEncoder(response).Encode(errResponse)
-		return
-	} else{
-		response.WriteHeader(http.StatusOK)
-		errResponse := responses.GenericResponse{Status:false, Message:"Link expired"}
+		errResponse := responses.GenericResponse{Status:false, Message:"Verification link expired"}
 		json.NewEncoder(response).Encode(errResponse)
 		return
 	}
