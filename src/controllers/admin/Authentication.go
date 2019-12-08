@@ -24,7 +24,7 @@ import (
 
 
 var mongoClient *mongo.Client
-
+var adminPathChannel = make(chan string)
 
 func InitializeMongoDb(){
 	mongoContext,_ := context.WithTimeout(context.Background(), 15 * time.Second)
@@ -32,6 +32,7 @@ func InitializeMongoDb(){
 	if ok == false{
 		uri = "mongodb://localhost:27017"
 	}
+
 	clientOptions := options.Client().ApplyURI(uri)
 	mongoClient,_ = mongo.Connect(mongoContext, clientOptions)
 }
@@ -49,13 +50,12 @@ func CreateNewHotelAdmin(response http.ResponseWriter, request *http.Request){
 	}
 	collection, mongoContext, cancel := utils.GetHotelCollection(mongoClient)
 	defer cancel()
-	if isEmailValid,_ := regexp.MatchString("(\\w+)@(\\w+)\\.com", adminUser.HotelEmail);!isEmailValid{
+	if isEmailValid,_ := regexp.MatchString("(\\w+)@(\\w+)\\.com", adminUser.HotelEmail);!isEmailValid {
 		response.WriteHeader(http.StatusOK)
 		errResponse := responses.GenericResponse{Status: false, Message: "Email:" + adminUser.HotelEmail + " is not a valid email.."}
 		json.NewEncoder(response).Encode(errResponse)
 		return
 	}
-	fmt.Println("Password when creating password here is ", adminUser.HotelPassword)
 	adminUser.HotelPassword = utils.GetHashedPassword(adminUser.HotelPassword)
 	filter := bson.M{"hotelEmail": adminUser.HotelEmail}
 	findError := collection.FindOne(mongoContext, filter).Decode(&adminUser)
@@ -76,7 +76,9 @@ func CreateNewHotelAdmin(response http.ResponseWriter, request *http.Request){
 		json.NewEncoder(response).Encode(errResponse)
 		return
 	}
-	sendMail(adminUser.HotelEmail, adminUser.HotelName, insertedID.InsertedID.(primitive.ObjectID).Hex())
+
+	//go sendMail(adminUser.HotelEmail, adminUser.HotelName, insertedID.InsertedID.(primitive.ObjectID).Hex())
+
 	json.NewEncoder(response).Encode(responses.SuccessfulResponse{
 		Status:  true,
 		Message: "Successfully created account",
