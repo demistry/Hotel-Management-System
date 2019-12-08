@@ -1,1 +1,1 @@
- "web: Hotel-Management-System"
+ web: bin/app
