@@ -8,6 +8,7 @@ import (
 	"github.com/Demistry/Hotel-Management-System/src/responses"
 	"github.com/Demistry/Hotel-Management-System/src/utils"
 	"github.com/gorilla/mux"
+	_ "github.com/lib/pq"
 	"github.com/sendgrid/sendgrid-go"
 	"github.com/sendgrid/sendgrid-go/helpers/mail"
 	"go.mongodb.org/mongo-driver/bson"
@@ -24,11 +25,20 @@ import (
 
 
 var mongoClient *mongo.Client
-var adminPathChannel = make(chan string)
+var uri string
+
 
 func InitializeMongoDb(){
+
+
+	//db, err := gorm.Open("postgres", "host=localhost port=5431 user=postgres dbname=demistry password=demistry sslmode=disable")
+	//if err != nil{
+	//	fmt.Println("Error initializing postgres", err.Error())
+	//}
+	//defer db.Close()
 	mongoContext,_ := context.WithTimeout(context.Background(), 15 * time.Second)
-	uri,ok := os.LookupEnv("MONGODB_URI")
+	uriHere,ok := os.LookupEnv("MONGODB_URI")
+	uri = uriHere
 	if ok == false{
 		log.Println("Did not see uri from environment")
 		uri = "mongodb://localhost:27017"
@@ -42,6 +52,8 @@ func InitializeMongoDb(){
 	}
 	log.Println("Mongo db connected...")
 	mongoClient = mongoLocal
+
+
 }
 
 func CreateNewHotelAdmin(response http.ResponseWriter, request *http.Request){
@@ -55,7 +67,7 @@ func CreateNewHotelAdmin(response http.ResponseWriter, request *http.Request){
 		json.NewEncoder(response).Encode(errResponse)
 		return
 	}
-	collection, mongoContext, cancel := utils.GetHotelCollection(mongoClient)
+	collection, mongoContext, cancel := utils.GetHotelCollection(mongoClient,uri)
 	defer cancel()
 	if isEmailValid,_ := regexp.MatchString("(\\w+)@(\\w+)\\.com", adminUser.HotelEmail);!isEmailValid {
 		response.WriteHeader(http.StatusOK)
@@ -112,7 +124,7 @@ func VerifyAdminEmail(response http.ResponseWriter, request *http.Request){
 	idParameter := mux.Vars(request)
 	id,_ := primitive.ObjectIDFromHex(idParameter["id"])
 	var admin models.AdminUser
-	collection, mongoContext, cancel := utils.GetHotelCollection(mongoClient)
+	collection, mongoContext, cancel := utils.GetHotelCollection(mongoClient, uri)
 	defer cancel()
 	filter := bson.M{"_id": id}
 	updateFilter := bson.M{"$set": bson.M{"isUserVerified": true}}
@@ -160,7 +172,7 @@ func LoginUser(response http.ResponseWriter, request *http.Request){
 		return
 	}
 	filter := bson.M{"hotelEmail":loginObject.Email}
-	collection, ctx, ctxCancel := utils.GetHotelCollection(mongoClient)
+	collection, ctx, ctxCancel := utils.GetHotelCollection(mongoClient, uri)
 	channel := make(chan error)
 	defer ctxCancel()
 	go func() {

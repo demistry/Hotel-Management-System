@@ -3,6 +3,7 @@ package utils
 import (
 	"context"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/crypto/bcrypt"
 	"log"
 	"time"
@@ -30,8 +31,16 @@ func GetHashedPassword(password string) string{
 	return string(hashedPasswordBytes)
 }
 
-func GetHotelCollection(mongoClient *mongo.Client)(*mongo.Collection, context.Context, context.CancelFunc){
-	collection := mongoClient.Database(DatabaseName).Collection(HotelCollection)
-	mongoContext,cancel := context.WithTimeout(context.Background(), 1 * time.Minute)
+func GetHotelCollection(mongoClient *mongo.Client, uri string)(*mongo.Collection, context.Context, context.CancelFunc){
+	clientOptions := options.Client().ApplyURI(uri)
+	mongoContext,cancel := context.WithTimeout(context.Background(), 28 * time.Second)
+	mongoLocal,err := mongo.Connect(mongoContext, clientOptions)
+	if err != nil{
+		log.Println("Could not connect here....", err.Error())
+		collection := mongoClient.Database(DatabaseName).Collection(HotelCollection)
+		return collection, mongoContext, cancel
+	}
+	collection := mongoLocal.Database(DatabaseName).Collection(HotelCollection)
+
 	return collection,mongoContext,cancel
 }
