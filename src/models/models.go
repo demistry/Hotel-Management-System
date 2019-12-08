@@ -3,6 +3,7 @@ package models
 import (
 	"github.com/Demistry/Hotel-Management-System/src/responses"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"time"
 )
 //TODO: Add case for multiple hotels later...
@@ -62,4 +63,9 @@ func (adminUser AdminUser) CreateResponse()responses.AdminUserResponse{
 type LoginRequest struct{
 	Email string `json:"email"`
 	Password string `json:"password"`
+}
+
+type InsertionStruct struct {
+InsertedId *mongo.InsertOneResult
+Er error
 }

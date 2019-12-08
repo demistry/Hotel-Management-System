@@ -66,8 +66,11 @@ func CreateNewHotelAdmin(response http.ResponseWriter, request *http.Request){
 	adminUser.HotelPassword = utils.GetHashedPassword(adminUser.HotelPassword)
 	filter := bson.M{"hotelEmail": adminUser.HotelEmail}
 	log.Println("About to start finding on DB...")
-	findError := collection.FindOne(mongoContext, filter).Decode(&adminUser)
-
+	findErrorChan := make(chan error)
+	go func(){
+		findErrorChan <- collection.FindOne(mongoContext, filter).Decode(&adminUser)
+	}()
+	findError := <- findErrorChan
 	if findError == nil { //check if database already contains email
 		response.WriteHeader(http.StatusOK)
 		errResponse := responses.GenericResponse{Status: false, Message: "Email:" + adminUser.HotelEmail + " already in use."}
@@ -77,20 +80,30 @@ func CreateNewHotelAdmin(response http.ResponseWriter, request *http.Request){
 	adminUser.IsUserVerified = false
 	adminUser.CreatedAt = time.Now()
 	adminUser.LinkExpiresAt = time.Now().Add(7 * 24 * time.Hour)
-	insertedID,er := collection.InsertOne(mongoContext, &adminUser)
-	if er != nil{
+
+	insertionChannel := make(chan models.InsertionStruct)
+
+	go func() {
+		insertionId, er := collection.InsertOne(mongoContext, &adminUser)
+		insertionChannel <- models.InsertionStruct{
+			InsertedId: insertionId,
+			Er:         er,
+		}
+	}()
+	insertedStruct := <- insertionChannel
+	if insertedStruct.Er != nil{
 		response.WriteHeader(http.StatusInternalServerError)
 		errResponse := responses.GenericResponse{Status:false, Message:"Internal Server Error"}
 		json.NewEncoder(response).Encode(errResponse)
 		return
 	}
 
-	//go sendMail(adminUser.HotelEmail, adminUser.HotelName, insertedID.InsertedID.(primitive.ObjectID).Hex())
+	go sendMail(adminUser.HotelEmail, adminUser.HotelName, insertedStruct.InsertedId.InsertedID.(primitive.ObjectID).Hex())
 
 	json.NewEncoder(response).Encode(responses.SuccessfulResponse{
 		Status:  true,
 		Message: "Successfully created account",
-		Data:    insertedID,
+		Data:    insertedStruct.InsertedId.InsertedID,
 	})
 }
 
@@ -103,7 +116,11 @@ func VerifyAdminEmail(response http.ResponseWriter, request *http.Request){
 	defer cancel()
 	filter := bson.M{"_id": id}
 	updateFilter := bson.M{"$set": bson.M{"isUserVerified": true}}
-	err := collection.FindOne(mongoContext, filter).Decode(&admin)
+	channel := make(chan error)
+	go func() {
+		channel <- collection.FindOne(mongoContext, filter).Decode(&admin)
+	}()
+	err := <- channel
 	if err != nil{
 		response.WriteHeader(http.StatusOK)
 		errResponse := responses.GenericResponse{Status:false, Message:"Could not find user"}
@@ -147,7 +164,6 @@ func LoginUser(response http.ResponseWriter, request *http.Request){
 	channel := make(chan error)
 	defer ctxCancel()
 	go func() {
-		log.Println("starting go routine here")
 		channel <- collection.FindOne(ctx,filter).Decode(&adminUser)
 	}()
 	for errorss := range channel{
