@@ -9,6 +9,8 @@ import (
 const DatabaseName = "HotelManagementSystemDatabase"
 const HotelCollection = "hotels"
 const EnvironmentVariableFilename = "src/app/EnvironmentVariables.env"
+const HerokuBaseUrl = "https://hotsys.herokuapp.com/"
+const ConfirmMailEndpoint = HerokuBaseUrl + "confirm/"
 
 const (
 	MinHashCost = 4
