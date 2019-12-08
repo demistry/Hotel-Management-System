@@ -31,7 +31,7 @@ func InitializeMongoDb(){
 	uri,ok := os.LookupEnv("MONGODB_URI")
 	if ok == false{
 		log.Println("Did not see uri from environment")
-		uri = "mongodb+srv://demistry:demistryilen@cluster0-gnmit.mongodb.net/test"
+		uri = "mongodb://localhost:27017"
 	}
 
 	clientOptions := options.Client().ApplyURI(uri)
@@ -65,6 +65,7 @@ func CreateNewHotelAdmin(response http.ResponseWriter, request *http.Request){
 	}
 	adminUser.HotelPassword = utils.GetHashedPassword(adminUser.HotelPassword)
 	filter := bson.M{"hotelEmail": adminUser.HotelEmail}
+	log.Println("About to start finding on DB...")
 	findError := collection.FindOne(mongoContext, filter).Decode(&adminUser)
 
 	if findError == nil { //check if database already contains email
@@ -143,35 +144,43 @@ func LoginUser(response http.ResponseWriter, request *http.Request){
 	}
 	filter := bson.M{"hotelEmail":loginObject.Email}
 	collection, ctx, ctxCancel := utils.GetHotelCollection(mongoClient)
+	channel := make(chan error)
 	defer ctxCancel()
-	findErr := collection.FindOne(ctx,filter).Decode(&adminUser)
-	if findErr != nil{
-		response.WriteHeader(http.StatusOK)
-		errResponse := responses.GenericResponse{Status:false, Message:"Could not find user"}
-		json.NewEncoder(response).Encode(errResponse)
-		return
-	}
-	if !adminUser.IsUserVerified{
-		response.WriteHeader(http.StatusOK)
-		errResponse := responses.GenericResponse{Status:false, Message:"User is unverified"}
-		json.NewEncoder(response).Encode(errResponse)
-		return
-	}
+	go func() {
+		log.Println("starting go routine here")
+		channel <- collection.FindOne(ctx,filter).Decode(&adminUser)
+	}()
+	for errorss := range channel{
+		log.Println("result received from go routine")
+		if errorss != nil{
+			response.WriteHeader(http.StatusOK)
+			errResponse := responses.GenericResponse{Status:false, Message:"Could not find user"}
+			json.NewEncoder(response).Encode(errResponse)
+			return
+		}
+		if !adminUser.IsUserVerified{
+			response.WriteHeader(http.StatusOK)
+			errResponse := responses.GenericResponse{Status:false, Message:"User is unverified"}
+			json.NewEncoder(response).Encode(errResponse)
+			return
+		}
 
 
-	isMatchedError := bcrypt.CompareHashAndPassword([]byte(adminUser.HotelPassword), []byte(loginObject.Password))
-	if isMatchedError == nil{
-		response.WriteHeader(http.StatusOK)
-		successResponse := responses.SuccessfulResponse{Status:true, Message:"Successfully logged in", Data:adminUser.CreateResponse()}
-		json.NewEncoder(response).Encode(successResponse)
-		return
-	} else{
-		response.WriteHeader(http.StatusOK)
-		errResponse := responses.GenericResponse{Status:false, Message:"User password is incorrect."}
-		fmt.Println("Error with logging in is ", isMatchedError.Error())
-		json.NewEncoder(response).Encode(errResponse)
-		return
+		isMatchedError := bcrypt.CompareHashAndPassword([]byte(adminUser.HotelPassword), []byte(loginObject.Password))
+		if isMatchedError == nil{
+			response.WriteHeader(http.StatusOK)
+			successResponse := responses.SuccessfulResponse{Status:true, Message:"Successfully logged in", Data:adminUser.CreateResponse()}
+			json.NewEncoder(response).Encode(successResponse)
+			return
+		} else{
+			response.WriteHeader(http.StatusOK)
+			errResponse := responses.GenericResponse{Status:false, Message:"User password is incorrect."}
+			fmt.Println("Error with logging in is ", isMatchedError.Error())
+			json.NewEncoder(response).Encode(errResponse)
+			return
+		}
 	}
+
 }
 
 

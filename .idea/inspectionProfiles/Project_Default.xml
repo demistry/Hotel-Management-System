@@ -14,6 +14,7 @@
         <method importPath="strings" receiver="*Builder" name="WriteRune" />
         <method importPath="math/rand" receiver="*Rand" name="Read" />
         <method importPath="encoding/json" receiver="*Encoder" name="Encode" />
+        <method importPath="go.mongodb.org/mongo-driver/mongo" receiver="*SingleResult" name="Decode" />
       </methods>
     </inspection_tool>
   </profile>

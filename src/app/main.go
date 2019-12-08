@@ -21,7 +21,7 @@ func main(){
 		fmt.Println("Error loading environment files ", err.Error())
 	}
 	//admin.SendMail()
-	go admin.InitializeMongoDb()
+	admin.InitializeMongoDb()
 
 	//for chann := range
 	initializeRoutes()
