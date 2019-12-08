@@ -46,6 +46,7 @@ func InitializeMongoDb(){
 
 	clientOptions := options.Client().ApplyURI(uri)
 	mongoLocal,err := mongo.Connect(mongoContext, clientOptions)
+	//session, err := mongo.
 	if err != nil{
 		log.Println("Error with connecting to BD is ", err.Error(), " and uri is ", uri)
 		return
