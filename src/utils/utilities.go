@@ -2,6 +2,7 @@ package utils
 
 import (
 	"context"
+	"fmt"
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/crypto/bcrypt"
 	"log"
@@ -27,6 +28,7 @@ func GetHashedPassword(password string) string{
 		log.Print("Error in hashing ", err.Error())
 		return ""
 	}
+	fmt.Println("Hashed password in function is ", hashedPasswordBytes)
 	return string(hashedPasswordBytes)
 }
 

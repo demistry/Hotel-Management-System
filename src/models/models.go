@@ -1,6 +1,7 @@
 package models
 
 import (
+	"github.com/Demistry/Hotel-Management-System/src/responses"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"time"
 )
@@ -35,7 +36,7 @@ type RoomUser struct{
 }
 
 type AdminUser struct{
-	ID primitive.ObjectID  `json:"_id,omitempty" bson:"_id,omitempty"`
+	ID primitive.ObjectID `json:"_id,omitempty" bson:"_id,omitempty"`
 	HotelName string `json:"hotelName" bson:"hotelName"`
 	HotelAddress string `json:"hotelAddress" bson:"hotelAddress"`
 	HotelRank int `json:"hotelRank" bson:"hotelRank"`
@@ -43,5 +44,22 @@ type AdminUser struct{
 	HotelPassword string `json:"hotelPassword" bson:"hotelPassword"`
 	IsUserVerified bool `json:"isUserVerified,omitempty" bson:"isUserVerified"`
 	CreatedAt time.Time `json:"createdAt,omitempty" bson:"createdAt"`
-	LinkExpiresAt time.Time `bson:"linkExpiresAt"`
+	LinkExpiresAt time.Time `json:"linkExpiresAt" bson:"linkExpiresAt"`
+}
+
+func (adminUser AdminUser) CreateResponse()responses.AdminUserResponse{
+	return responses.AdminUserResponse{
+		ID:             adminUser.ID.Hex(),
+		HotelName:      adminUser.HotelName,
+		HotelAddress:   adminUser.HotelAddress,
+		HotelRank:      adminUser.HotelRank,
+		HotelEmail:     adminUser.HotelEmail,
+		IsUserVerified: adminUser.IsUserVerified,
+		CreatedAt:      adminUser.CreatedAt,
+	}
+}
+
+type LoginRequest struct{
+	Email string `json:"email"`
+	Password string `json:"password"`
 }

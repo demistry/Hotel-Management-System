@@ -3,6 +3,7 @@ package admin
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/Demistry/Hotel-Management-System/src/models"
 	"github.com/Demistry/Hotel-Management-System/src/responses"
 	"github.com/Demistry/Hotel-Management-System/src/utils"
@@ -13,6 +14,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"golang.org/x/crypto/bcrypt"
 	"log"
 	"net/http"
 	"os"
@@ -53,6 +55,7 @@ func CreateNewHotelAdmin(response http.ResponseWriter, request *http.Request){
 		json.NewEncoder(response).Encode(errResponse)
 		return
 	}
+	fmt.Println("Password when creating password here is ", adminUser.HotelPassword)
 	adminUser.HotelPassword = utils.GetHashedPassword(adminUser.HotelPassword)
 	filter := bson.M{"hotelEmail": adminUser.HotelEmail}
 	findError := collection.FindOne(mongoContext, filter).Decode(&adminUser)
@@ -65,7 +68,7 @@ func CreateNewHotelAdmin(response http.ResponseWriter, request *http.Request){
 	}
 	adminUser.IsUserVerified = false
 	adminUser.CreatedAt = time.Now()
-	adminUser.LinkExpiresAt = time.Now().Add(30 * time.Second)
+	adminUser.LinkExpiresAt = time.Now().Add(7 * 24 * time.Hour)
 	insertedID,er := collection.InsertOne(mongoContext, &adminUser)
 	if er != nil{
 		response.WriteHeader(http.StatusInternalServerError)
@@ -73,8 +76,12 @@ func CreateNewHotelAdmin(response http.ResponseWriter, request *http.Request){
 		json.NewEncoder(response).Encode(errResponse)
 		return
 	}
-	//sendMail(adminUser.HotelEmail, adminUser.HotelName, insertedID.InsertedID.(primitive.ObjectID).Hex())
-	json.NewEncoder(response).Encode(insertedID)
+	sendMail(adminUser.HotelEmail, adminUser.HotelName, insertedID.InsertedID.(primitive.ObjectID).Hex())
+	json.NewEncoder(response).Encode(responses.SuccessfulResponse{
+		Status:  true,
+		Message: "Successfully created account",
+		Data:    insertedID,
+	})
 }
 
 func VerifyAdminEmail(response http.ResponseWriter, request *http.Request){
@@ -97,18 +104,62 @@ func VerifyAdminEmail(response http.ResponseWriter, request *http.Request){
 		if !admin.IsUserVerified{
 			_, _ = collection.UpdateOne(mongoContext, filter, updateFilter)
 			response.WriteHeader(http.StatusOK)
-			errResponse := responses.GenericResponse{Status:true, Message:"User email successfully verified"}
-			json.NewEncoder(response).Encode(errResponse)
+			successResponse := responses.GenericResponse{Status:true, Message:"User email successfully verified"}
+			json.NewEncoder(response).Encode(successResponse)
 			return
 		} else{
 			response.WriteHeader(http.StatusOK)
-			errResponse := responses.GenericResponse{Status:false, Message:"User is already verified"}
-			json.NewEncoder(response).Encode(errResponse)
+			userResponse := responses.GenericResponse{Status:false, Message:"User is already verified"}
+			json.NewEncoder(response).Encode(userResponse)
 			return
 		}
 	}else{
 		response.WriteHeader(http.StatusOK)
-		errResponse := responses.GenericResponse{Status:false, Message:"Verification link expired"}
+		userResponse := responses.GenericResponse{Status:false, Message:"Verification link expired"}
+		json.NewEncoder(response).Encode(userResponse)
+		return
+	}
+}
+
+func LoginUser(response http.ResponseWriter, request *http.Request){
+	response.Header().Set("content-type","application/json")
+	var loginObject *models.LoginRequest
+	var adminUser *models.AdminUser
+	err := json.NewDecoder(request.Body).Decode(&loginObject)
+	if err != nil{
+		response.WriteHeader(http.StatusForbidden)
+		errResponse := responses.GenericResponse{Status:false, Message:"Missing field(s)"}
+		json.NewEncoder(response).Encode(errResponse)
+		return
+	}
+	filter := bson.M{"hotelEmail":loginObject.Email}
+	collection, ctx, ctxCancel := utils.GetHotelCollection(mongoClient)
+	defer ctxCancel()
+	findErr := collection.FindOne(ctx,filter).Decode(&adminUser)
+	if findErr != nil{
+		response.WriteHeader(http.StatusOK)
+		errResponse := responses.GenericResponse{Status:false, Message:"Could not find user"}
+		json.NewEncoder(response).Encode(errResponse)
+		return
+	}
+	if !adminUser.IsUserVerified{
+		response.WriteHeader(http.StatusOK)
+		errResponse := responses.GenericResponse{Status:false, Message:"User is unverified"}
+		json.NewEncoder(response).Encode(errResponse)
+		return
+	}
+
+
+	isMatchedError := bcrypt.CompareHashAndPassword([]byte(adminUser.HotelPassword), []byte(loginObject.Password))
+	if isMatchedError == nil{
+		response.WriteHeader(http.StatusOK)
+		successResponse := responses.SuccessfulResponse{Status:true, Message:"Successfully logged in", Data:adminUser.CreateResponse()}
+		json.NewEncoder(response).Encode(successResponse)
+		return
+	} else{
+		response.WriteHeader(http.StatusOK)
+		errResponse := responses.GenericResponse{Status:false, Message:"User password is incorrect."}
+		fmt.Println("Error with logging in is ", isMatchedError.Error())
 		json.NewEncoder(response).Encode(errResponse)
 		return
 	}
@@ -119,7 +170,7 @@ func sendMail(emailAddress string, username string, userId string){
 	from := mail.NewEmail("HotSys", "Hotsys@mail.com")
 	subject := "Email Verification for HotSys"
 	to := mail.NewEmail(username, emailAddress)
-	content := mail.NewContent("text/plain", "Click on the link below to verify your email address for " + username + "\n " + utils.HerokuBaseUrl + utils.ConfirmMailEndpoint + userId)
+	content := mail.NewContent("text/plain", "Click on the link below to verify your email address for " + username + "\n " + utils.HerokuBaseUrl + utils.ConfirmMailEndpoint + userId + "\n<strong>This link expires in 7 days.</strong>")
 	m := mail.NewV3MailInit(from, subject, to, content)
 	apiKey,ok := os.LookupEnv("SENDGRID_API_KEY")
 	if ok == false{
@@ -133,6 +184,16 @@ func sendMail(emailAddress string, username string, userId string){
 		log.Println(err)
 	}
 }
+
+
+
+
+
+
+
+
+
+
 
 
 
