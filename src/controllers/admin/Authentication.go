@@ -94,6 +94,7 @@ func CreateNewHotelAdmin(response http.ResponseWriter, request *http.Request){
 	if insertedStruct.Er != nil{
 		response.WriteHeader(http.StatusInternalServerError)
 		errResponse := responses.GenericResponse{Status:false, Message:"Internal Server Error"}
+		log.Println("Could not insert due to error ", insertedStruct.Er.Error())
 		json.NewEncoder(response).Encode(errResponse)
 		return
 	}
