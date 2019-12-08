@@ -65,7 +65,6 @@ func CreateNewHotelAdmin(response http.ResponseWriter, request *http.Request){
 	}
 	adminUser.HotelPassword = utils.GetHashedPassword(adminUser.HotelPassword)
 	filter := bson.M{"hotelEmail": adminUser.HotelEmail}
-	log.Println("About to start finding on DB...")
 	findErrorChan := make(chan error)
 	go func(){
 		findErrorChan <- collection.FindOne(mongoContext, filter).Decode(&adminUser)
