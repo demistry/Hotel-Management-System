@@ -1,8 +1,11 @@
 package utils
 
 import (
+	"context"
+	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/crypto/bcrypt"
 	"log"
+	"time"
 )
 
 //Collection parameters
@@ -10,7 +13,7 @@ const DatabaseName = "HotelManagementSystemDatabase"
 const HotelCollection = "hotels"
 const EnvironmentVariableFilename = "src/app/EnvironmentVariables.env"
 const HerokuBaseUrl = "https://hotsys.herokuapp.com/"
-const ConfirmMailEndpoint = HerokuBaseUrl + "confirm/"
+const ConfirmMailEndpoint = HerokuBaseUrl + "admin/create/confirm/"
 
 const (
 	MinHashCost = 4
@@ -25,4 +28,10 @@ func GetHashedPassword(password string) string{
 		return ""
 	}
 	return string(hashedPasswordBytes)
+}
+
+func GetHotelCollection(mongoClient *mongo.Client)(*mongo.Collection, context.Context, context.CancelFunc){
+	collection := mongoClient.Database(DatabaseName).Collection(HotelCollection)
+	mongoContext,cancel := context.WithTimeout(context.Background(), 30 * time.Second)
+	return collection,mongoContext,cancel
 }

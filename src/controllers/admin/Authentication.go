@@ -6,6 +6,7 @@ import (
 	"github.com/Demistry/Hotel-Management-System/src/models"
 	"github.com/Demistry/Hotel-Management-System/src/responses"
 	"github.com/Demistry/Hotel-Management-System/src/utils"
+	"github.com/gorilla/mux"
 	"github.com/sendgrid/sendgrid-go"
 	"github.com/sendgrid/sendgrid-go/helpers/mail"
 	"go.mongodb.org/mongo-driver/bson"
@@ -44,8 +45,7 @@ func CreateNewHotelAdmin(response http.ResponseWriter, request *http.Request){
 		json.NewEncoder(response).Encode(errResponse)
 		return
 	}
-	collection := mongoClient.Database(utils.DatabaseName).Collection(utils.HotelCollection)
-	mongoContext,cancel := context.WithTimeout(context.Background(), 8 * time.Second)
+	collection, mongoContext, cancel := utils.GetHotelCollection(mongoClient)
 	defer cancel()
 	if isEmailValid,_ := regexp.MatchString("(\\w+)@(\\w+)\\.com", adminUser.HotelEmail);!isEmailValid{
 		response.WriteHeader(http.StatusOK)
@@ -63,6 +63,8 @@ func CreateNewHotelAdmin(response http.ResponseWriter, request *http.Request){
 		json.NewEncoder(response).Encode(errResponse)
 		return
 	}
+	adminUser.IsUserVerified = false
+	adminUser.CreatedAt = time.Now()
 	insertedID,er := collection.InsertOne(mongoContext, &adminUser)
 	if er != nil{
 		response.WriteHeader(http.StatusInternalServerError)
@@ -70,16 +72,50 @@ func CreateNewHotelAdmin(response http.ResponseWriter, request *http.Request){
 		json.NewEncoder(response).Encode(errResponse)
 		return
 	}
-	sendMail(adminUser.HotelEmail, adminUser.HotelName, insertedID.InsertedID.(primitive.ObjectID).Hex())
+	//sendMail(adminUser.HotelEmail, adminUser.HotelName, insertedID.InsertedID.(primitive.ObjectID).Hex())
 	json.NewEncoder(response).Encode(insertedID)
 }
 
+func VerifyAdminEmail(response http.ResponseWriter, request *http.Request){
+	idParameter := mux.Vars(request)
+	id,_ := primitive.ObjectIDFromHex(idParameter["id"])
+	var admin models.AdminUser
+	collection, mongoContext, cancel := utils.GetHotelCollection(mongoClient)
+	defer cancel()
+	filter := bson.M{"_id": id}
+	updateFilter := bson.M{"$set": bson.M{"isUserVerified": true}}
+	err := collection.FindOne(mongoContext, filter).Decode(&admin)
+	if err != nil{
+		response.WriteHeader(http.StatusOK)
+		errResponse := responses.GenericResponse{Status:false, Message:"Could not find user"}
+		json.NewEncoder(response).Encode(errResponse)
+		return
+	}
+	if admin.CreatedAt.Before(time.Now()) && !admin.IsUserVerified{
+		_, _ = collection.UpdateOne(mongoContext, filter, updateFilter)
+		response.WriteHeader(http.StatusOK)
+		errResponse := responses.GenericResponse{Status:true, Message:"User mail successfully verified"}
+		json.NewEncoder(response).Encode(errResponse)
+		return
+	} else if admin.IsUserVerified{
+		response.WriteHeader(http.StatusOK)
+		errResponse := responses.GenericResponse{Status:false, Message:"Already verified user"}
+		json.NewEncoder(response).Encode(errResponse)
+		return
+	} else{
+		response.WriteHeader(http.StatusOK)
+		errResponse := responses.GenericResponse{Status:false, Message:"Link expired"}
+		json.NewEncoder(response).Encode(errResponse)
+		return
+	}
+}
 
-func sendMail(emailAddress string, username string, userid string){
+
+func sendMail(emailAddress string, username string, userId string){
 	from := mail.NewEmail("HotSys", "Hotsys@mail.com")
 	subject := "Email Verification for HotSys"
 	to := mail.NewEmail(username, emailAddress)
-	content := mail.NewContent("text/plain", "Click on the link below to verify your email address\n " + utils.HerokuBaseUrl + utils.ConfirmMailEndpoint + userid)
+	content := mail.NewContent("text/plain", "Click on the link below to verify your email address for " + username + "\n " + utils.HerokuBaseUrl + utils.ConfirmMailEndpoint + userId)
 	m := mail.NewV3MailInit(from, subject, to, content)
 	apiKey,ok := os.LookupEnv("SENDGRID_API_KEY")
 	if ok == false{

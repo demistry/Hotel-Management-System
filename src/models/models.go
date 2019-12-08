@@ -1,6 +1,9 @@
 package models
 
-import "go.mongodb.org/mongo-driver/bson/primitive"
+import (
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"time"
+)
 //TODO: Add case for multiple hotels later...
 type Room struct{
 	ID primitive.ObjectID `json:"_id,omitempty" bson:"_id,omitempty"`
@@ -38,4 +41,6 @@ type AdminUser struct{
 	HotelRank int `json:"hotelRank" bson:"hotelRank"`
 	HotelEmail string `json:"hotelEmail" bson:"hotelEmail"`
 	HotelPassword string `json:"hotelPassword" bson:"hotelPassword"`
+	IsUserVerified bool `json:"isUserVerified,omitempty" bson:"isUserVerified"`
+	CreatedAt time.Time `json:"createdAt,omitempty" bson:"createdAt"`
 }
