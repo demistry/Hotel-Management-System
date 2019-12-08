@@ -30,11 +30,15 @@ func InitializeMongoDb(){
 	mongoContext,_ := context.WithTimeout(context.Background(), 15 * time.Second)
 	uri,ok := os.LookupEnv("MONGODB_URI")
 	if ok == false{
-		uri = "mongodb://localhost:27017"
+		uri = "mongodb+srv://demistry:demistryilen@cluster0-gnmit.mongodb.net/test"
 	}
 
 	clientOptions := options.Client().ApplyURI(uri)
-	mongoClient,_ = mongo.Connect(mongoContext, clientOptions)
+	mongoLocal,err := mongo.Connect(mongoContext, clientOptions)
+	if err != nil{
+		fmt.Println("Error with connecting to BD is ", err.Error(), " and uri is ", uri)
+	}
+	mongoClient = mongoLocal
 }
 
 func CreateNewHotelAdmin(response http.ResponseWriter, request *http.Request){
