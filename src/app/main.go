@@ -15,12 +15,15 @@ var GlobalRouter *mux.Router
 
 func main(){
 	fmt.Print("Starting server...\n")
+	//mongoChannel := make
 	err := godotenv.Load(utils.EnvironmentVariableFilename)
 	if err != nil{
 		fmt.Println("Error loading environment files ", err.Error())
 	}
 	//admin.SendMail()
-	admin.InitializeMongoDb()
+	go admin.InitializeMongoDb()
+
+	//for chann := range
 	initializeRoutes()
 }
 

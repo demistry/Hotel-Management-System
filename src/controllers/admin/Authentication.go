@@ -30,14 +30,17 @@ func InitializeMongoDb(){
 	mongoContext,_ := context.WithTimeout(context.Background(), 15 * time.Second)
 	uri,ok := os.LookupEnv("MONGODB_URI")
 	if ok == false{
+		log.Println("Did not see uri from environment")
 		uri = "mongodb+srv://demistry:demistryilen@cluster0-gnmit.mongodb.net/test"
 	}
 
 	clientOptions := options.Client().ApplyURI(uri)
 	mongoLocal,err := mongo.Connect(mongoContext, clientOptions)
 	if err != nil{
-		fmt.Println("Error with connecting to BD is ", err.Error(), " and uri is ", uri)
+		log.Println("Error with connecting to BD is ", err.Error(), " and uri is ", uri)
+		return
 	}
+	log.Println("Mongo db connected...")
 	mongoClient = mongoLocal
 }
 
