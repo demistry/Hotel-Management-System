@@ -8,6 +8,7 @@ import (
 	"github.com/joho/godotenv"
 	"log"
 	"net/http"
+	"os"
 )
 
 var GlobalRouter *mux.Router
@@ -26,6 +27,11 @@ func main(){
 func initializeRoutes(){
 	GlobalRouter = mux.NewRouter()
 	addRoutes()
-	log.Fatal(http.ListenAndServe(":12345", GlobalRouter))
+
+	port, ok := os.LookupEnv("PORT")
+	if ok == false {
+		port = "3000"
+	}
+	log.Fatal(http.ListenAndServe(":" + port, GlobalRouter))
 }
 
