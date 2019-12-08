@@ -32,6 +32,6 @@ func GetHashedPassword(password string) string{
 
 func GetHotelCollection(mongoClient *mongo.Client)(*mongo.Collection, context.Context, context.CancelFunc){
 	collection := mongoClient.Database(DatabaseName).Collection(HotelCollection)
-	mongoContext,cancel := context.WithTimeout(context.Background(), 25 * time.Second)
+	mongoContext,cancel := context.WithTimeout(context.Background(), 1 * time.Minute)
 	return collection,mongoContext,cancel
 }
