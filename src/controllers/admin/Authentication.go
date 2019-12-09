@@ -216,7 +216,7 @@ func sendMail(emailAddress string, username string, userId string){
 	from := mail.NewEmail("HotSys", "Hotsys@mail.com")
 	subject := "Email Verification for HotSys"
 	to := mail.NewEmail(username, emailAddress)
-	content := mail.NewContent("text/plain", "Click on the link below to verify your email address for " + username + "\n " + utils.HerokuBaseUrl + utils.ConfirmMailEndpoint + userId + "\nThis link expires in 7 days.")
+	content := mail.NewContent("text/plain", "Click on the link below to verify your email address for " + username + "\n " + utils.ConfirmMailEndpoint + userId + "\nThis link expires in 7 days.")
 	m := mail.NewV3MailInit(from, subject, to, content)
 	apiKey,ok := os.LookupEnv("SENDGRID_API_KEY")
 	if ok == false{

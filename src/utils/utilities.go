@@ -9,7 +9,7 @@ import (
 )
 
 //Collection parameters
-const DatabaseName = "HotSysCluster"
+const DatabaseName = "HotSysDatabase"
 const HotelCollection = "hotels"
 const EnvironmentVariableFilename = "src/app/EnvironmentVariables.env"
 const HerokuBaseUrl = "https://hotsys.herokuapp.com/"
@@ -35,15 +35,4 @@ func GetHotelCollection(mongoClient *mongo.Client, uri string)(*mongo.Collection
 	mongoContext,cancel := context.WithTimeout(context.Background(), 28 * time.Second)
 	return collection,mongoContext,cancel
 
-	//clientOptions := options.Client().ApplyURI(uri)
-	//mongoContext,cancel := context.WithTimeout(context.Background(), 28 * time.Second)
-	//mongoLocal,err := mongo.Connect(mongoContext, clientOptions)
-	//if err != nil{
-	//	log.Println("Could not connect here....", err.Error())
-	//	collection := mongoClient.Database(DatabaseName).Collection(HotelCollection)
-	//	return collection, mongoContext, cancel
-	//}
-	//collection := mongoLocal.Database(DatabaseName).Collection(HotelCollection)
-	//
-	//return collection,mongoContext,cancel
 }
