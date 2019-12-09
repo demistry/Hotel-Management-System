@@ -7,6 +7,7 @@ import (
 	"github.com/Demistry/Hotel-Management-System/src/models"
 	"github.com/Demistry/Hotel-Management-System/src/responses"
 	"github.com/Demistry/Hotel-Management-System/src/utils"
+	"github.com/globalsign/mgo"
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
 	"github.com/sendgrid/sendgrid-go"
@@ -26,16 +27,12 @@ import (
 
 var mongoClient *mongo.Client
 var uri string
+var mongoSession *mgo.Session
 
 
 func InitializeMongoDb(){
 
 
-	//db, err := gorm.Open("postgres", "host=localhost port=5431 user=postgres dbname=demistry password=demistry sslmode=disable")
-	//if err != nil{
-	//	fmt.Println("Error initializing postgres", err.Error())
-	//}
-	//defer db.Close()
 	mongoContext,_ := context.WithTimeout(context.Background(), 15 * time.Second)
 	uriHere,ok := os.LookupEnv("MONGODB_URI")
 	uri = uriHere
@@ -46,13 +43,13 @@ func InitializeMongoDb(){
 
 	clientOptions := options.Client().ApplyURI(uri)
 	mongoLocal,err := mongo.Connect(mongoContext, clientOptions)
-	//session, err := mongo.
 	if err != nil{
 		log.Println("Error with connecting to BD is ", err.Error(), " and uri is ", uri)
 		return
 	}
-	log.Println("Mongo db connected...")
+	log.Println("Mongo db connected with uri ", uri)
 	mongoClient = mongoLocal
+
 
 
 }
@@ -70,6 +67,7 @@ func CreateNewHotelAdmin(response http.ResponseWriter, request *http.Request){
 	}
 	collection, mongoContext, cancel := utils.GetHotelCollection(mongoClient,uri)
 	defer cancel()
+	defer mongoContext.Done()
 	if isEmailValid,_ := regexp.MatchString("(\\w+)@(\\w+)\\.com", adminUser.HotelEmail);!isEmailValid {
 		response.WriteHeader(http.StatusOK)
 		errResponse := responses.GenericResponse{Status: false, Message: "Email:" + adminUser.HotelEmail + " is not a valid email.."}
@@ -79,6 +77,7 @@ func CreateNewHotelAdmin(response http.ResponseWriter, request *http.Request){
 	adminUser.HotelPassword = utils.GetHashedPassword(adminUser.HotelPassword)
 	filter := bson.M{"hotelEmail": adminUser.HotelEmail}
 	findErrorChan := make(chan error)
+	defer close(findErrorChan)
 	go func(){
 		findErrorChan <- collection.FindOne(mongoContext, filter).Decode(&adminUser)
 	}()
@@ -94,7 +93,7 @@ func CreateNewHotelAdmin(response http.ResponseWriter, request *http.Request){
 	adminUser.LinkExpiresAt = time.Now().Add(7 * 24 * time.Hour)
 
 	insertionChannel := make(chan models.InsertionStruct)
-
+	defer close(insertionChannel)
 	go func() {
 		insertionId, er := collection.InsertOne(mongoContext, &adminUser)
 		insertionChannel <- models.InsertionStruct{

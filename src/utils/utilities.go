@@ -3,14 +3,13 @@ package utils
 import (
 	"context"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/crypto/bcrypt"
 	"log"
 	"time"
 )
 
 //Collection parameters
-const DatabaseName = "HotelManagementSystemDatabase"
+const DatabaseName = "HotSysCluster"
 const HotelCollection = "hotels"
 const EnvironmentVariableFilename = "src/app/EnvironmentVariables.env"
 const HerokuBaseUrl = "https://hotsys.herokuapp.com/"
@@ -32,19 +31,19 @@ func GetHashedPassword(password string) string{
 }
 
 func GetHotelCollection(mongoClient *mongo.Client, uri string)(*mongo.Collection, context.Context, context.CancelFunc){
-	//collection := mongoClient.Database(DatabaseName).Collection(HotelCollection)
-	//mongoContext,cancel := context.WithTimeout(context.Background(), 1 * time.Minute)
-	//return collection,mongoContext,cancel
-
-	clientOptions := options.Client().ApplyURI(uri)
+	collection := mongoClient.Database(DatabaseName).Collection(HotelCollection)
 	mongoContext,cancel := context.WithTimeout(context.Background(), 28 * time.Second)
-	mongoLocal,err := mongo.Connect(mongoContext, clientOptions)
-	if err != nil{
-		log.Println("Could not connect here....", err.Error())
-		collection := mongoClient.Database(DatabaseName).Collection(HotelCollection)
-		return collection, mongoContext, cancel
-	}
-	collection := mongoLocal.Database(DatabaseName).Collection(HotelCollection)
-
 	return collection,mongoContext,cancel
+
+	//clientOptions := options.Client().ApplyURI(uri)
+	//mongoContext,cancel := context.WithTimeout(context.Background(), 28 * time.Second)
+	//mongoLocal,err := mongo.Connect(mongoContext, clientOptions)
+	//if err != nil{
+	//	log.Println("Could not connect here....", err.Error())
+	//	collection := mongoClient.Database(DatabaseName).Collection(HotelCollection)
+	//	return collection, mongoContext, cancel
+	//}
+	//collection := mongoLocal.Database(DatabaseName).Collection(HotelCollection)
+	//
+	//return collection,mongoContext,cancel
 }

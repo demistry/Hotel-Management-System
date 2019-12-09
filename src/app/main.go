@@ -22,15 +22,12 @@ func main(){
 	}
 	//admin.SendMail()
 	admin.InitializeMongoDb()
-
-	//for chann := range
 	initializeRoutes()
 }
 
 func initializeRoutes(){
 	GlobalRouter = mux.NewRouter()
 	addRoutes()
-
 	port, ok := os.LookupEnv("PORT")
 	if ok == false {
 		port = "3000"
