@@ -34,7 +34,7 @@ func InitializeMongoDb(){
 
 
 	mongoContext,_ := context.WithTimeout(context.Background(), 15 * time.Second)
-	uriHere,ok := os.LookupEnv("MONGODB_URI")
+	uriHere,ok := os.LookupEnv("MLAB_URI")
 	uri = uriHere
 	if ok == false{
 		log.Println("Did not see uri from environment")
