@@ -5,6 +5,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/crypto/bcrypt"
 	"log"
+	"net/http"
+	"encoding/json"
 	"time"
 )
 
@@ -28,6 +30,14 @@ func GetHashedPassword(password string) string{
 		return ""
 	}
 	return string(hashedPasswordBytes)
+}
+
+func HandleError(statusCode int , genericResponse interface{}, err error,resp http.ResponseWriter){
+	if err != nil{
+		log.Println("Error that occurred is ", err.Error())
+	}
+	resp.WriteHeader(statusCode)
+	json.NewEncoder(resp).Encode(genericResponse)
 }
 
 func GetHotelCollection(mongoClient *mongo.Client, uri string)(*mongo.Collection, context.Context, context.CancelFunc){

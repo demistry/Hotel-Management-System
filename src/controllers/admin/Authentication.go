@@ -3,11 +3,9 @@ package admin
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"github.com/Demistry/Hotel-Management-System/src/models"
 	"github.com/Demistry/Hotel-Management-System/src/responses"
 	"github.com/Demistry/Hotel-Management-System/src/utils"
-	"github.com/globalsign/mgo"
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
 	"github.com/sendgrid/sendgrid-go"
@@ -27,7 +25,6 @@ import (
 
 var mongoClient *mongo.Client
 var uri string
-var mongoSession *mgo.Session
 
 
 func InitializeMongoDb(){
@@ -44,14 +41,11 @@ func InitializeMongoDb(){
 	clientOptions := options.Client().ApplyURI(uri)
 	mongoLocal,err := mongo.Connect(mongoContext, clientOptions)
 	if err != nil{
-		log.Println("Error with connecting to BD is ", err.Error(), " and uri is ", uri)
+		log.Println("Error with connecting to BD is ", err.Error())
 		return
 	}
-	log.Println("Mongo db connected with uri ", uri)
+	log.Println("Mongo db connected")
 	mongoClient = mongoLocal
-
-
-
 }
 
 func CreateNewHotelAdmin(response http.ResponseWriter, request *http.Request){
@@ -59,19 +53,15 @@ func CreateNewHotelAdmin(response http.ResponseWriter, request *http.Request){
 	var adminUser *models.AdminUser
 	err := json.NewDecoder(request.Body).Decode(&adminUser)
 	if err != nil{
-		response.WriteHeader(http.StatusForbidden)
-		errResponse := responses.GenericResponse{Status:false, Message:"Missing field(s)"}
 		log.Print("Error in decoding body is ", err.Error())
-		json.NewEncoder(response).Encode(errResponse)
+		utils.HandleError(http.StatusInternalServerError, responses.GenericResponse{Status:false, Message:"Missing field(s)"},err, response)
 		return
 	}
 	collection, mongoContext, cancel := utils.GetHotelCollection(mongoClient,uri)
 	defer cancel()
 	defer mongoContext.Done()
 	if isEmailValid,_ := regexp.MatchString("(\\w+)@(\\w+)\\.com", adminUser.HotelEmail);!isEmailValid {
-		response.WriteHeader(http.StatusOK)
-		errResponse := responses.GenericResponse{Status: false, Message: "Email:" + adminUser.HotelEmail + " is not a valid email.."}
-		json.NewEncoder(response).Encode(errResponse)
+		utils.HandleError(http.StatusOK, responses.GenericResponse{Status: false, Message: "Email:" + adminUser.HotelEmail + " is not a valid email.."},nil, response)
 		return
 	}
 	adminUser.HotelPassword = utils.GetHashedPassword(adminUser.HotelPassword)
@@ -83,9 +73,7 @@ func CreateNewHotelAdmin(response http.ResponseWriter, request *http.Request){
 	}()
 	findError := <- findErrorChan
 	if findError == nil { //check if database already contains email
-		response.WriteHeader(http.StatusOK)
-		errResponse := responses.GenericResponse{Status: false, Message: "Email:" + adminUser.HotelEmail + " already in use."}
-		json.NewEncoder(response).Encode(errResponse)
+		utils.HandleError(http.StatusOK, responses.GenericResponse{Status: false, Message: "Email:" + adminUser.HotelEmail + " already in use."},nil, response)
 		return
 	}
 	adminUser.IsUserVerified = false
@@ -103,10 +91,7 @@ func CreateNewHotelAdmin(response http.ResponseWriter, request *http.Request){
 	}()
 	insertedStruct := <- insertionChannel
 	if insertedStruct.Er != nil{
-		response.WriteHeader(http.StatusInternalServerError)
-		errResponse := responses.GenericResponse{Status:false, Message:"Internal Server Error"}
-		log.Println("Could not insert due to error ", insertedStruct.Er.Error())
-		json.NewEncoder(response).Encode(errResponse)
+		utils.HandleError(http.StatusInternalServerError, responses.GenericResponse{Status:false, Message:"Internal Server Error"},insertedStruct.Er, response)
 		return
 	}
 
@@ -134,28 +119,20 @@ func VerifyAdminEmail(response http.ResponseWriter, request *http.Request){
 	}()
 	err := <- channel
 	if err != nil{
-		response.WriteHeader(http.StatusOK)
-		errResponse := responses.GenericResponse{Status:false, Message:"Could not find user"}
-		json.NewEncoder(response).Encode(errResponse)
+		utils.HandleError(http.StatusOK, responses.GenericResponse{Status:false, Message:"Could not find user"},err, response)
 		return
 	}
 	if admin.LinkExpiresAt.After(time.Now()){
 		if !admin.IsUserVerified{
 			_, _ = collection.UpdateOne(mongoContext, filter, updateFilter)
-			response.WriteHeader(http.StatusOK)
-			successResponse := responses.GenericResponse{Status:true, Message:"User email successfully verified"}
-			json.NewEncoder(response).Encode(successResponse)
+			utils.HandleError(http.StatusOK, responses.GenericResponse{Status:true, Message:"User email successfully verified"},nil, response)
 			return
 		} else{
-			response.WriteHeader(http.StatusOK)
-			userResponse := responses.GenericResponse{Status:false, Message:"User is already verified"}
-			json.NewEncoder(response).Encode(userResponse)
+			utils.HandleError(http.StatusOK, responses.GenericResponse{Status:false, Message:"User is already verified"},nil, response)
 			return
 		}
 	}else{
-		response.WriteHeader(http.StatusOK)
-		userResponse := responses.GenericResponse{Status:false, Message:"Verification link expired"}
-		json.NewEncoder(response).Encode(userResponse)
+		utils.HandleError(http.StatusOK, responses.GenericResponse{Status:false, Message:"Verification link expired"},nil, response)
 		return
 	}
 }
@@ -166,11 +143,10 @@ func LoginUser(response http.ResponseWriter, request *http.Request){
 	var adminUser *models.AdminUser
 	err := json.NewDecoder(request.Body).Decode(&loginObject)
 	if err != nil{
-		response.WriteHeader(http.StatusForbidden)
-		errResponse := responses.GenericResponse{Status:false, Message:"Missing field(s)"}
-		json.NewEncoder(response).Encode(errResponse)
+		utils.HandleError(http.StatusForbidden, responses.GenericResponse{Status:false, Message:"Missing field(s)"},err, response)
 		return
 	}
+
 	filter := bson.M{"hotelEmail":loginObject.Email}
 	collection, ctx, ctxCancel := utils.GetHotelCollection(mongoClient, uri)
 	channel := make(chan error)
@@ -181,30 +157,20 @@ func LoginUser(response http.ResponseWriter, request *http.Request){
 	for errorss := range channel{
 		log.Println("result received from go routine")
 		if errorss != nil{
-			response.WriteHeader(http.StatusOK)
-			errResponse := responses.GenericResponse{Status:false, Message:"Could not find user"}
-			json.NewEncoder(response).Encode(errResponse)
+			utils.HandleError(http.StatusOK, responses.GenericResponse{Status:false, Message:"Could not find user"},errorss, response)
 			return
 		}
 		if !adminUser.IsUserVerified{
-			response.WriteHeader(http.StatusOK)
-			errResponse := responses.GenericResponse{Status:false, Message:"User is unverified"}
-			json.NewEncoder(response).Encode(errResponse)
+			utils.HandleError(http.StatusOK, responses.GenericResponse{Status:false, Message:"User is unverified"},errorss, response)
 			return
 		}
 
-
 		isMatchedError := bcrypt.CompareHashAndPassword([]byte(adminUser.HotelPassword), []byte(loginObject.Password))
 		if isMatchedError == nil{
-			response.WriteHeader(http.StatusOK)
-			successResponse := responses.SuccessfulResponse{Status:true, Message:"Successfully logged in", Data:adminUser.CreateResponse()}
-			json.NewEncoder(response).Encode(successResponse)
+			utils.HandleError(http.StatusOK, responses.SuccessfulResponse{Status:true, Message:"Successfully logged in", Data:adminUser.CreateResponse()},isMatchedError, response)
 			return
 		} else{
-			response.WriteHeader(http.StatusOK)
-			errResponse := responses.GenericResponse{Status:false, Message:"User password is incorrect."}
-			fmt.Println("Error with logging in is ", isMatchedError.Error())
-			json.NewEncoder(response).Encode(errResponse)
+			utils.HandleError(http.StatusOK, responses.GenericResponse{Status:false, Message:"User password is incorrect."},isMatchedError, response)
 			return
 		}
 	}
