@@ -26,6 +26,15 @@ type AdminUserResponse struct{
 	CreatedAt time.Time `json:"createdAt,omitempty" bson:"createdAt"`
 }
 
+type HotelUserResponse struct {
+	ID string `json:"id,omitempty" bson:"id,omitempty"`
+	FirstName string `json:"firstName" bson:"firstName"`
+	LastName string `json:"lastName" bson:"lastName"`
+	Email string `json:"email" bson:"email"`
+	Password string `json:"password" bson:"password"`
+	ImageLink string `json:"imageLink" bson:"imageLink"`
+}
+
 func (resp GenericResponse) AsBytes() []byte{
 	respString := "{\n\"status\": " + strconv.FormatBool(resp.Status) + ",\n\"message\" : " + "\"" + resp.Message + "\"\n}"
 	return []byte(respString)

@@ -24,10 +24,10 @@ type Room struct{
 type Reviews struct{
 	ReviewMessage string `json:"reviewMessage" bson:"reviewMessage"`
 	ReviewRating string `json:"reviewRating" bson:"reviewRating"`
-	Reviewer RoomUser `json:"reviewer" bson:"reviewer"`
+	Reviewer HotelUser `json:"reviewer" bson:"reviewer"`
 }
 
-type RoomUser struct{
+type HotelUser struct{
 	ID primitive.ObjectID `json:"_id,omitempty" bson:"_id,omitempty"`
 	FirstName string `json:"firstName" bson:"firstName"`
 	LastName string `json:"lastName" bson:"lastName"`
@@ -46,6 +46,17 @@ type AdminUser struct{
 	IsUserVerified bool `json:"isUserVerified,omitempty" bson:"isUserVerified"`
 	CreatedAt time.Time `json:"createdAt,omitempty" bson:"createdAt"`
 	LinkExpiresAt time.Time `json:"linkExpiresAt" bson:"linkExpiresAt"`
+}
+
+func (hotelUser HotelUser) CreateResponse() responses.HotelUserResponse{
+	return responses.HotelUserResponse{
+		ID:        hotelUser.ID.Hex(),
+		FirstName: hotelUser.FirstName,
+		LastName:  hotelUser.LastName,
+		Email:     hotelUser.Email,
+		Password:  hotelUser.Password,
+		ImageLink: hotelUser.ImageLink,
+	}
 }
 
 func (adminUser AdminUser) CreateResponse()responses.AdminUserResponse{

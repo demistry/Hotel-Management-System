@@ -119,7 +119,7 @@ func VerifyAdminEmail(response http.ResponseWriter, request *http.Request){
 	}()
 	err := <- channel
 	if err != nil{
-		utils.HandleError(http.StatusOK, responses.GenericResponse{Status:false, Message:"Could not find user"},err, response)
+		utils.HandleError(http.StatusOK, responses.GenericResponse{Status:false, Message:"Could not find users"},err, response)
 		return
 	}
 	if admin.LinkExpiresAt.After(time.Now()){
@@ -157,7 +157,7 @@ func LoginUser(response http.ResponseWriter, request *http.Request){
 	for errorss := range channel{
 		log.Println("result received from go routine")
 		if errorss != nil{
-			utils.HandleError(http.StatusOK, responses.GenericResponse{Status:false, Message:"Could not find user"},errorss, response)
+			utils.HandleError(http.StatusOK, responses.GenericResponse{Status:false, Message:"Could not find users"},errorss, response)
 			return
 		}
 		if !adminUser.IsUserVerified{
@@ -182,7 +182,7 @@ func sendMail(emailAddress string, username string, userId string){
 	from := mail.NewEmail("HotSys", "Hotsys@mail.com")
 	subject := "Email Verification for HotSys"
 	to := mail.NewEmail(username, emailAddress)
-	content := mail.NewContent("text/plain", "Click on the link below to verify your email address for " + username + "\n " + utils.ConfirmMailEndpoint + userId + "\nThis link expires in 7 days.")
+	content := mail.NewContent("text/plain", "Click on the link below to verify your email address for " + username + "\n " + utils.ConfirmAdminMailEndpoint+ userId + "\nThis link expires in 7 days.")
 	m := mail.NewV3MailInit(from, subject, to, content)
 	apiKey,ok := os.LookupEnv("SENDGRID_API_KEY")
 	if ok == false{

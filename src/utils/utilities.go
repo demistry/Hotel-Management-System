@@ -15,7 +15,7 @@ const DatabaseName = "HotSysDatabase"
 const HotelCollection = "hotels"
 const EnvironmentVariableFilename = "src/app/EnvironmentVariables.env"
 const HerokuBaseUrl = "https://hotsys.herokuapp.com/"
-const ConfirmMailEndpoint = HerokuBaseUrl + "admin/create/confirm/"
+const ConfirmAdminMailEndpoint = HerokuBaseUrl + "admin/create/confirm/"
 
 const (
 	MinHashCost = 4
