@@ -177,6 +177,22 @@ func LoginUser(response http.ResponseWriter, request *http.Request){
 
 }
 
+func ForgottenPassword(response http.ResponseWriter, request *http.Request){
+	response.Header().Set("content-type", "application/json")
+	err := request.ParseForm()
+	if err != nil{
+		utils.HandleError(http.StatusForbidden,responses.GenericResponse{Status:false, Message:"Missing field(s)"},err, response)
+		return
+	}
+	keyValues := request.Form
+	email := keyValues.Get("email")
+	log.Println("The email received for forgotten password is ", email)
+	json.NewEncoder(response).Encode(responses.GenericResponse{
+		Status:  false,
+		Message: "Email recieved is " + email,
+	})
+}
+
 
 func sendMail(emailAddress string, username string, userId string){
 	from := mail.NewEmail("HotSys", "Hotsys@mail.com")

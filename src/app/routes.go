@@ -16,6 +16,7 @@ func addRoutes(){
 	adminRoutes.HandleFunc("/create",admin.CreateNewHotelAdmin).Methods("POST")
 	adminRoutes.HandleFunc("/create/confirm/{id}", admin.VerifyAdminEmail).Methods("GET")
 	adminRoutes.HandleFunc("/login", admin.LoginUser).Methods("POST")
+	adminRoutes.HandleFunc("/resetPassword", admin.ForgottenPassword).Methods("POST")
 
 
 	userRoutes := GlobalRouter.PathPrefix("/users").Subrouter()
