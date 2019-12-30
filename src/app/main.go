@@ -27,6 +27,7 @@ func main(){
 
 func initializeRoutes(){
 	GlobalRouter = mux.NewRouter()
+	GlobalRouter.Headers()
 	addRoutes()
 	port, ok := os.LookupEnv("PORT")
 	if ok == false {

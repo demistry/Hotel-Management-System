@@ -46,3 +46,4 @@ func GetHotelCollection(mongoClient *mongo.Client, uri string)(*mongo.Collection
 	mongoContext,cancel := context.WithTimeout(context.Background(), 28 * time.Second)
 	return collection,mongoContext,cancel
 }
+

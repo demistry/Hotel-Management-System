@@ -48,6 +48,7 @@ func InitializeMongoDb(){
 
 func CreateNewHotelAdmin(response http.ResponseWriter, request *http.Request){
 	response.Header().Set("content-type", "application/json")
+	response.Header().Set("Access-Control-Allow-Origin", "*")
 	var adminUser *models.AdminUser
 	err := json.NewDecoder(request.Body).Decode(&adminUser)
 	if err != nil{
@@ -104,6 +105,7 @@ func CreateNewHotelAdmin(response http.ResponseWriter, request *http.Request){
 
 func VerifyAdminEmail(response http.ResponseWriter, request *http.Request){
 	response.Header().Set("content-type", "application/json")
+	response.Header().Set("Access-Control-Allow-Origin", "*")
 	idParameter := mux.Vars(request)
 	id,_ := primitive.ObjectIDFromHex(idParameter["id"])
 	var admin models.AdminUser
@@ -137,6 +139,7 @@ func VerifyAdminEmail(response http.ResponseWriter, request *http.Request){
 
 func LoginUser(response http.ResponseWriter, request *http.Request){
 	response.Header().Set("content-type","application/json")
+	response.Header().Set("Access-Control-Allow-Origin", "*")
 	var loginObject *models.LoginRequest
 	var adminUser *models.AdminUser
 	err := json.NewDecoder(request.Body).Decode(&loginObject)
@@ -177,6 +180,7 @@ func LoginUser(response http.ResponseWriter, request *http.Request){
 
 func ResendVerificationMailForResetPassword(response http.ResponseWriter, request *http.Request){
 	response.Header().Set("content-type", "application/json")
+	response.Header().Set("Access-Control-Allow-Origin", "*")
 	err := request.ParseForm()
 	if err != nil{
 		utils.HandleError(http.StatusForbidden,responses.GenericResponse{Status:false, Message:"Missing field(s)"},err, response)
@@ -220,6 +224,7 @@ func ResendVerificationMailForResetPassword(response http.ResponseWriter, reques
 
 func ResetPassword(response http.ResponseWriter, request *http.Request){
 	response.Header().Set("content-type", "application/json")
+	response.Header().Set("Access-Control-Allow-Origin", "*")
 	var resetPasswordRequest *models.ResetPasswordRequest
 	var adminUser *models.AdminUser
 
