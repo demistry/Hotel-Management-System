@@ -76,6 +76,12 @@ type LoginRequest struct{
 	Password string `json:"password"`
 }
 
+type ResetPasswordRequest struct{
+	ID string `json:"id"`
+	PassWord string `json:"password"`
+	ConfirmPassword string `json:"confirmPassword"`
+}
+
 type InsertionStruct struct {
 InsertedId *mongo.InsertOneResult
 Er error

@@ -16,6 +16,7 @@ const HotelCollection = "hotels"
 const EnvironmentVariableFilename = "src/app/EnvironmentVariables.env"
 const HerokuBaseUrl = "https://hotsys.herokuapp.com/"
 const ConfirmAdminMailEndpoint = HerokuBaseUrl + "admin/create/confirm/"
+const ResetPasswordAdminMailEndpoint = HerokuBaseUrl + "admin/resetPassword/"
 
 const (
 	MinHashCost = 4
@@ -44,5 +45,4 @@ func GetHotelCollection(mongoClient *mongo.Client, uri string)(*mongo.Collection
 	collection := mongoClient.Database(DatabaseName).Collection(HotelCollection)
 	mongoContext,cancel := context.WithTimeout(context.Background(), 28 * time.Second)
 	return collection,mongoContext,cancel
-
 }

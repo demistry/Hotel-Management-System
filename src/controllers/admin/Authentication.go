@@ -8,8 +8,6 @@ import (
 	"github.com/Demistry/Hotel-Management-System/src/utils"
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
-	"github.com/sendgrid/sendgrid-go"
-	"github.com/sendgrid/sendgrid-go/helpers/mail"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -154,14 +152,14 @@ func LoginUser(response http.ResponseWriter, request *http.Request){
 	go func() {
 		channel <- collection.FindOne(ctx,filter).Decode(&adminUser)
 	}()
-	for errorss := range channel{
+	for errors := range channel{
 		log.Println("result received from go routine")
-		if errorss != nil{
-			utils.HandleError(http.StatusOK, responses.GenericResponse{Status:false, Message:"Could not find users"},errorss, response)
+		if errors != nil{
+			utils.HandleError(http.StatusOK, responses.GenericResponse{Status:false, Message:"Could not find users"},errors, response)
 			return
 		}
 		if !adminUser.IsUserVerified{
-			utils.HandleError(http.StatusOK, responses.GenericResponse{Status:false, Message:"User is unverified"},errorss, response)
+			utils.HandleError(http.StatusOK, responses.GenericResponse{Status:false, Message:"User is unverified"},errors, response)
 			return
 		}
 
@@ -177,7 +175,7 @@ func LoginUser(response http.ResponseWriter, request *http.Request){
 
 }
 
-func ForgottenPassword(response http.ResponseWriter, request *http.Request){
+func ResendVerificationMailForResetPassword(response http.ResponseWriter, request *http.Request){
 	response.Header().Set("content-type", "application/json")
 	err := request.ParseForm()
 	if err != nil{
@@ -186,32 +184,82 @@ func ForgottenPassword(response http.ResponseWriter, request *http.Request){
 	}
 	keyValues := request.Form
 	email := keyValues.Get("email")
-	log.Println("The email received for forgotten password is ", email)
+	if email == ""{
+		json.NewEncoder(response).Encode(responses.GenericResponse{
+			Status:  false,
+			Message: "Empty email parameter",
+		})
+		return
+	}
+	if isEmailValid,_ := regexp.MatchString("(\\w+)@(\\w+)\\.com", email);!isEmailValid {
+		utils.HandleError(http.StatusOK, responses.GenericResponse{Status: false, Message: "Email:" + email + " is not a valid email.."}, nil, response)
+		return
+	}
+
+	collection, mongoContext, cancel := utils.GetHotelCollection(mongoClient,uri)
+	defer cancel()
+	defer mongoContext.Done()
+	filter := bson.M{"hotelEmail": email}
+	var admin *models.AdminUser
+	findError := collection.FindOne(mongoContext, filter).Decode(&admin)
+	if findError != nil{
+		utils.HandleError(http.StatusOK, responses.GenericResponse{Status:false, Message:"Could not find user with email " + email},findError, response)
+		return
+	}
+
+	updateFilter := bson.M{"$set": bson.M{"linkExpiresAt": time.Now().Add(15 * time.Minute)}}
+
+	go sendResetPasswordMail(admin.HotelEmail, admin.HotelName, admin.ID.Hex())
+	_, _ = collection.UpdateOne(mongoContext, filter, updateFilter)
+
 	json.NewEncoder(response).Encode(responses.GenericResponse{
-		Status:  false,
-		Message: "Email recieved is " + email,
+		Status:  true,
+		Message: "Successfully sent reset password mail",
 	})
 }
 
+func ResetPassword(response http.ResponseWriter, request *http.Request){
+	response.Header().Set("content-type", "application/json")
+	var resetPasswordRequest *models.ResetPasswordRequest
+	var adminUser *models.AdminUser
 
-func sendMail(emailAddress string, username string, userId string){
-	from := mail.NewEmail("HotSys", "Hotsys@mail.com")
-	subject := "Email Verification for HotSys"
-	to := mail.NewEmail(username, emailAddress)
-	content := mail.NewContent("text/plain", "Click on the link below to verify your email address for " + username + "\n " + utils.ConfirmAdminMailEndpoint+ userId + "\nThis link expires in 7 days.")
-	m := mail.NewV3MailInit(from, subject, to, content)
-	apiKey,ok := os.LookupEnv("SENDGRID_API_KEY")
-	if ok == false{
-		apiKey = os.Getenv("SENDGRID_API_KEY")
+	err := json.NewDecoder(request.Body).Decode(&resetPasswordRequest)
+	if err != nil{
+		utils.HandleError(http.StatusForbidden, responses.GenericResponse{Status:false, Message:"Missing field(s)"},err, response)
+		return
 	}
-	request := sendgrid.GetRequest(apiKey, "/v3/mail/send", "https://api.sendgrid.com")
-	request.Method = "POST"
-	request.Body = mail.GetRequestBody(m)
-	_, err := sendgrid.API(request)
-	if err != nil {
-		log.Println(err)
+
+	if resetPasswordRequest.PassWord != resetPasswordRequest.ConfirmPassword{
+		utils.HandleError(http.StatusOK, responses.GenericResponse{Status:false, Message:"Passwords do not match"}, nil, response)
+		return
 	}
+
+	filter := bson.M{"_id":resetPasswordRequest.ID}
+	collection, ctx, ctxCancel := utils.GetHotelCollection(mongoClient, uri)
+	defer ctxCancel()
+	defer ctx.Done()
+	findError := collection.FindOne(ctx, filter).Decode(&adminUser)
+	if findError != nil{
+		utils.HandleError(http.StatusOK, responses.GenericResponse{Status:false, Message:"Could not find user with that ID"},findError, response)
+		return
+	}
+
+	if adminUser.LinkExpiresAt.After(time.Now()){
+		updateFilter := bson.M{"$set": bson.M{"hotelPassword": utils.GetHashedPassword(resetPasswordRequest.PassWord)}}
+		_, _ = collection.UpdateOne(ctx, filter, updateFilter)
+		json.NewEncoder(response).Encode(responses.GenericResponse{
+			Status:  true,
+			Message: "Successfully reset password for " + adminUser.HotelEmail,
+		})
+	}else{
+		utils.HandleError(http.StatusOK, responses.GenericResponse{Status:false, Message:"Password reset link is expired"},nil, response)
+		return
+	}
+
 }
+
+
+
 
 
 
