@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/Demistry/Hotel-Management-System/src/controllers/admin"
 	"github.com/Demistry/Hotel-Management-System/src/controllers/users"
 	"github.com/gorilla/mux"
@@ -10,6 +11,7 @@ import (
 var adminRoutes *mux.Router
 func addRoutes(){
 	GlobalRouter.HandleFunc("/", func(resp http.ResponseWriter, r *http.Request){
+		fmt.Println("Calling dummy...")
 		_, _ = resp.Write([]byte("WELCOME TO HOTSYS APP"))
 	})
 	adminRoutes = GlobalRouter.PathPrefix("/admin").Subrouter()

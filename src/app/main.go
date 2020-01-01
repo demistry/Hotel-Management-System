@@ -15,7 +15,6 @@ var GlobalRouter *mux.Router
 
 func main(){
 	fmt.Print("Starting server...\n")
-	//mongoChannel := make
 	err := godotenv.Load(utils.EnvironmentVariableFilename)
 	if err != nil{
 		fmt.Println("Error loading environment files ", err.Error())
@@ -27,7 +26,6 @@ func main(){
 
 func initializeRoutes(){
 	GlobalRouter = mux.NewRouter()
-	GlobalRouter.Headers()
 	addRoutes()
 	port, ok := os.LookupEnv("PORT")
 	if ok == false {
